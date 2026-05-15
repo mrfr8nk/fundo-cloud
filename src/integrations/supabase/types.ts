@@ -14,16 +14,219 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      files: {
+        Row: {
+          created_at: string
+          download_count: number
+          expires_at: string | null
+          favorite: boolean
+          folder: string
+          id: string
+          mime_type: string
+          name: string
+          r2_key: string
+          size_bytes: number
+          tags: string[]
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          download_count?: number
+          expires_at?: string | null
+          favorite?: boolean
+          folder?: string
+          id?: string
+          mime_type: string
+          name: string
+          r2_key: string
+          size_bytes?: number
+          tags?: string[]
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          download_count?: number
+          expires_at?: string | null
+          favorite?: boolean
+          folder?: string
+          id?: string
+          mime_type?: string
+          name?: string
+          r2_key?: string
+          size_bytes?: number
+          tags?: string[]
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quotas: {
+        Row: {
+          bandwidth_limit_bytes: number
+          storage_limit_bytes: number
+          storage_used_bytes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bandwidth_limit_bytes?: number
+          storage_limit_bytes?: number
+          storage_used_bytes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bandwidth_limit_bytes?: number
+          storage_limit_bytes?: number
+          storage_used_bytes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_logs: {
+        Row: {
+          action: string
+          api_key_id: string | null
+          bytes: number
+          created_at: string
+          file_id: string | null
+          id: number
+          status: number
+          user_id: string
+        }
+        Insert: {
+          action: string
+          api_key_id?: string | null
+          bytes?: number
+          created_at?: string
+          file_id?: string | null
+          id?: number
+          status?: number
+          user_id: string
+        }
+        Update: {
+          action?: string
+          api_key_id?: string | null
+          bytes?: number
+          created_at?: string
+          file_id?: string | null
+          id?: number
+          status?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_logs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_logs_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +353,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
