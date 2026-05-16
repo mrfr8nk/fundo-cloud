@@ -59,7 +59,7 @@ function Landing() {
               <div className="text-muted-foreground"># Upload a file with the API</div>
               <div className="mt-2">
                 <span className="text-accent">curl</span>{" "}
-                <span className="text-primary">-X POST</span> https://fundo.cdn/api/upload \<br />
+                <span className="text-primary">-X POST</span> https://cdn.synapex.co.zw/api/upload \<br />
                 {"  "}<span className="text-primary">-H</span> "Authorization: Bearer fundo_live_xxx" \<br />
                 {"  "}<span className="text-primary">-F</span> "file=@logo.png"
               </div>
