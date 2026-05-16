@@ -136,7 +136,7 @@ function Docs() {
   "name": "logo.png",
   "size": 12345,
   "mime": "image/png",
-  "url": "https://cdn.example.com/<key>",
+  "url": "https://cdn.synapex.co.zw/<key>",
   "visibility": "private",
   "created_at": "2025-01-01T00:00:00Z"
 }`}</pre>

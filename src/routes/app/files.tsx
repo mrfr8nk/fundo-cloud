@@ -88,8 +88,8 @@ function FilesPage() {
 
   async function shareLink(row: Row) {
     if (row.visibility === "public") {
-      const url = `${import.meta.env.VITE_R2_PUBLIC_BASE_URL || ""}${row.r2_key}`.replace(/\/+/, "/");
-      await navigator.clipboard.writeText(window.location.origin + `/cdn/${row.id}`);
+      const url = `https://cdn.synapex.co.zw/${row.r2_key}`;
+      await navigator.clipboard.writeText(url);
       toast.success("Public link copied");
     } else {
       const { data, error } = await supabase.functions.invoke("r2-sign-get", { body: { fileId: row.id, expiresIn: 3600 } });
