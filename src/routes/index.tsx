@@ -109,11 +109,11 @@ function Landing() {
       <footer className="relative z-10 max-w-7xl mx-auto px-6 py-10 border-t border-border/50 flex flex-wrap items-center justify-between gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Globe2 className="size-4" />
-          <span>© {new Date().getFullYear()} Fundo CDN</span>
+          <span>© {new Date().getFullYear()} Fundo CDN · Built by <span className="text-foreground font-medium">Developer Darrell Mucheri</span></span>
         </div>
         <div className="flex items-center gap-5">
           <Link to="/app/docs" className="hover:text-foreground">Docs</Link>
-          <a href="#" className="hover:text-foreground inline-flex items-center gap-1"><Github className="size-4" /> GitHub</a>
+          <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-foreground inline-flex items-center gap-1"><Github className="size-4" /> GitHub</a>
         </div>
       </footer>
     </div>
