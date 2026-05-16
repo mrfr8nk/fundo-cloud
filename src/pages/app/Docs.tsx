@@ -1,11 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Copy } from "lucide-react";
-
-export const Route = createFileRoute("/app/docs")({ component: Docs });
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const BASE = `https://${PROJECT_ID}.functions.supabase.co`;
@@ -97,7 +94,7 @@ function Block({ samples, label }: { samples: Record<string, string>; label: str
   );
 }
 
-function Docs() {
+export default function Docs() {
   return (
     <div className="space-y-6">
       <div>

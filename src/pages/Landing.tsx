@@ -1,12 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-  Cloud, Zap, Shield, Code2, Globe2, ArrowRight, KeyRound, Gauge, FolderTree, Github,
+  Zap, Shield, Code2, Globe2, ArrowRight, KeyRound, Gauge, FolderTree, Github,
 } from "lucide-react";
 
-export const Route = createFileRoute("/")({ component: Landing });
-
-function Landing() {
+export default function Landing() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />

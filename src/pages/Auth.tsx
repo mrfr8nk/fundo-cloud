@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { z } from "zod";
 
-export const Route = createFileRoute("/auth")({ component: Auth });
-
 const schema = z.object({
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(128),
 });
 
-function Auth() {
+export default function Auth() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -24,7 +22,7 @@ function Auth() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app" });
+      if (data.session) navigate("/app");
     });
   }, [navigate]);
 
@@ -44,11 +42,11 @@ function Auth() {
         });
         if (error) throw error;
         toast.success("Account created. Welcome!");
-        navigate({ to: "/app" });
+        navigate("/app");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/app" });
+        navigate("/app");
       }
     } catch (err: any) {
       toast.error(err.message ?? "Auth failed");
@@ -61,7 +59,7 @@ function Auth() {
     const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/app" });
     if (result.error) { toast.error("Google sign-in failed"); return; }
     if (result.redirected) return;
-    navigate({ to: "/app" });
+    navigate("/app");
   }
 
   return (

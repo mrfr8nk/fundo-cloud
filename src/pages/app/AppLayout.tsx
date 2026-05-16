@@ -1,13 +1,10 @@
-import { createFileRoute, Outlet, Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Cloud, LayoutDashboard, Files, KeyRound, BarChart3, ShieldCheck, BookOpen, LogOut, Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-
-export const Route = createFileRoute("/app")({ component: AppLayout });
 
 const NAV = [
   { to: "/app", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -17,14 +14,14 @@ const NAV = [
   { to: "/app/docs", label: "API Docs", icon: BookOpen },
 ];
 
-function AppLayout() {
+export default function AppLayout() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const path = useRouterState({ select: (s) => s.location.pathname });
+  const path = useLocation().pathname;
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth" });
+    if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
 
   useEffect(() => {
@@ -37,7 +34,7 @@ function AppLayout() {
   }
 
   const items = isAdmin
-    ? [...NAV, { to: "/app/admin", label: "Admin", icon: ShieldCheck }]
+    ? [...NAV, { to: "/app/admin", label: "Admin", icon: ShieldCheck, exact: false }]
     : NAV;
 
   return (
@@ -68,7 +65,7 @@ function AppLayout() {
             <Button variant="ghost" size="sm" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
               {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </Button>
-            <Button variant="ghost" size="sm" className="flex-1 justify-start" onClick={() => { signOut(); navigate({ to: "/" }); }}>
+            <Button variant="ghost" size="sm" className="flex-1 justify-start" onClick={() => { signOut(); navigate("/"); }}>
               <LogOut className="size-4 mr-2" /> Sign out
             </Button>
           </div>
@@ -81,7 +78,7 @@ function AppLayout() {
             <Cloud className="size-5 text-primary" />
             <span className="font-semibold">Fundo CDN</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => { signOut(); navigate({ to: "/" }); }}>
+          <Button variant="ghost" size="sm" onClick={() => { signOut(); navigate("/"); }}>
             <LogOut className="size-4" />
           </Button>
         </header>

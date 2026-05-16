@@ -1,13 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { formatBytes } from "@/lib/format";
 
-export const Route = createFileRoute("/app/analytics")({ component: Analytics });
-
-function Analytics() {
+export default function Analytics() {
   const [byDay, setByDay] = useState<{ day: string; requests: number; bytes: number }[]>([]);
   const [byAction, setByAction] = useState<{ action: string; count: number }[]>([]);
 

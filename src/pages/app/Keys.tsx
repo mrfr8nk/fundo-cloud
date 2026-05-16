@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -8,11 +7,9 @@ import { toast } from "sonner";
 import { Copy, KeyRound, Trash2, Plus } from "lucide-react";
 import { formatDate } from "@/lib/format";
 
-export const Route = createFileRoute("/app/keys")({ component: Keys });
-
 type K = { id: string; name: string; key_prefix: string; last_used_at: string | null; revoked_at: string | null; created_at: string };
 
-function Keys() {
+export default function Keys() {
   const [keys, setKeys] = useState<K[]>([]);
   const [name, setName] = useState("");
   const [shown, setShown] = useState<string | null>(null);

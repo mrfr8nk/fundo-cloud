@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -7,10 +6,8 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { formatBytes, formatDate, classifyMime } from "@/lib/format";
 import {
-  Upload, Trash2, Link2, Search, Star, Image as ImageIcon, FileText, Film, Archive, File as FileIcon, Copy, Loader2,
+  Upload, Trash2, Link2, Search, Star, Image as ImageIcon, FileText, Film, Archive, File as FileIcon, Loader2,
 } from "lucide-react";
-
-export const Route = createFileRoute("/app/files")({ component: FilesPage });
 
 const MAX = 100 * 1024 * 1024;
 type Row = { id: string; name: string; r2_key: string; size_bytes: number; mime_type: string; visibility: string; favorite: boolean; created_at: string; tags: string[] };
@@ -20,7 +17,7 @@ function iconFor(mime: string) {
   return c === "image" ? ImageIcon : c === "video" ? Film : c === "pdf" || c === "doc" ? FileText : c === "archive" ? Archive : FileIcon;
 }
 
-function FilesPage() {
+export default function FilesPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);

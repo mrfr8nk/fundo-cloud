@@ -1,13 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { formatBytes } from "@/lib/format";
 import { Files as FilesIcon, HardDrive, KeyRound, Activity } from "lucide-react";
 
-export const Route = createFileRoute("/app/")({ component: Overview });
-
-function Overview() {
+export default function Overview() {
   const [stats, setStats] = useState({ files: 0, storage: 0, keys: 0, requests: 0, quota: 0 });
 
   useEffect(() => { (async () => {

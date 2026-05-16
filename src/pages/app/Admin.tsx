@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card } from "@/components/ui/card";
@@ -7,15 +7,13 @@ import { Button } from "@/components/ui/button";
 import { formatBytes, formatDate } from "@/lib/format";
 import { Trash2 } from "lucide-react";
 
-export const Route = createFileRoute("/app/admin")({ component: Admin });
-
-function Admin() {
+export default function Admin() {
   const { isAdmin, loading } = useAuth();
   const nav = useNavigate();
   const [files, setFiles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
 
-  useEffect(() => { if (!loading && !isAdmin) nav({ to: "/app" }); }, [loading, isAdmin, nav]);
+  useEffect(() => { if (!loading && !isAdmin) nav("/app"); }, [loading, isAdmin, nav]);
 
   useEffect(() => { (async () => {
     if (!isAdmin) return;
