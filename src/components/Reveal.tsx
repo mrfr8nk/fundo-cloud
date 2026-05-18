@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties, type ElementType } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -6,7 +6,7 @@ type Props = {
   className?: string;
   delay?: number;
   y?: number;
-  as?: keyof JSX.IntrinsicElements;
+  as?: ElementType;
 };
 
 export function Reveal({ children, className, delay = 0, y = 24, as: Tag = "div" }: Props) {
