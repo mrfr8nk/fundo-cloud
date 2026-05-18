@@ -58,6 +58,7 @@ export type Database = {
           mime_type: string
           name: string
           r2_key: string
+          short_slug: string | null
           size_bytes: number
           tags: string[]
           user_id: string
@@ -73,6 +74,7 @@ export type Database = {
           mime_type: string
           name: string
           r2_key: string
+          short_slug?: string | null
           size_bytes?: number
           tags?: string[]
           user_id: string
@@ -88,6 +90,7 @@ export type Database = {
           mime_type?: string
           name?: string
           r2_key?: string
+          short_slug?: string | null
           size_bytes?: number
           tags?: string[]
           user_id?: string
@@ -217,6 +220,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gen_short_slug: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
