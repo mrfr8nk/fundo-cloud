@@ -102,8 +102,7 @@ export default function FilesPage() {
 
   function shortLinkFor(slug: string | null) {
     if (!slug) return null;
-    const projectRef = "sjeoqpkhpvrqqdyinvuc";
-    return `https://${projectRef}.functions.supabase.co/s/${slug}`;
+    return `https://cdn.synapex.co.zw/s/${slug}`;
   }
 
   async function shareLink(row: Row) {
