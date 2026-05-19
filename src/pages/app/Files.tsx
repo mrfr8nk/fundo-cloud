@@ -100,16 +100,21 @@ export default function FilesPage() {
     refresh();
   }
 
-  function shortLinkFor(slug: string | null) {
-    if (!slug) return null;
-    return `https://cdn.synapex.co.zw/s/${slug}`;
+  function linkFor(row: Row) {
+    // Public files: link directly to the R2 custom domain (no worker needed)
+    if (row.visibility === "public") {
+      return `https://cdn.synapex.co.zw/${row.r2_key}`;
+    }
+    // Private files: use the short-link redirect (requires the /s/* Worker route)
+    if (row.short_slug) return `https://cdn.synapex.co.zw/s/${row.short_slug}`;
+    return null;
   }
 
   async function shareLink(row: Row) {
-    const link = shortLinkFor(row.short_slug);
-    if (!link) { toast.error("No short link yet"); return; }
+    const link = linkFor(row);
+    if (!link) { toast.error("No link available yet"); return; }
     await navigator.clipboard.writeText(link);
-    toast.success(row.visibility === "public" ? "Short link copied" : "Short link copied (resolves to a 1h signed URL)");
+    toast.success(row.visibility === "public" ? "Public link copied" : "Short link copied (signed on open)");
   }
 
   async function toggleVisibility(row: Row) {
