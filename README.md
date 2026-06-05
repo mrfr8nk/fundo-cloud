@@ -196,13 +196,15 @@ This is a **static SPA** — `bun run build` produces a `dist/` folder with `ind
    | `VITE_SUPABASE_PUBLISHABLE_KEY`  | your publishable (anon) key |
    | `VITE_SUPABASE_PROJECT_ID`       | your project ref            |
 
-5. **SPA rewrite** — Vercel's Vite preset handles this automatically. If routes 404 on refresh, add `vercel.json` at repo root:
+5. **SPA rewrite** — A `vercel.json` is already included in this repo. It rewrites every URL to `index.html` so client-side routes like `/app/files` work on direct load and browser refresh without 404s.
 
    ```json
    {
      "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
    }
    ```
+
+   > No manual step needed — just make sure you don't delete `vercel.json` from the root.
 
 6. **Deploy**. Add a custom domain in Project → Settings → Domains.
 7. **Update R2 CORS** with the new Vercel URL + custom domain.
@@ -214,20 +216,82 @@ This is a **static SPA** — `bun run build` produces a `dist/` folder with `ind
 
 ### Option B — Deploy on Render
 
-1. **Push to GitHub**.
-2. Render → **New** → **Static Site** → connect repo.
-3. **Settings**:
-   - **Build Command**: `bun install && bun run build`
-   - **Publish Directory**: `dist`
-4. **Environment Variables** — same three `VITE_*` vars as above.
-5. **SPA rewrite** — Render → Service → **Redirects/Rewrites**:
-   - Source: `/*`
-   - Destination: `/index.html`
-   - Action: `Rewrite`
-6. **Create Static Site** → Render gives you `your-app.onrender.com`.
-7. Add a custom domain in Settings → Custom Domains.
-8. **Update R2 CORS** with the new origins.
-9. Deploy Supabase edge functions the same way as above.
+Render hosts static sites for free with automatic HTTPS and global CDN.
+
+#### Step-by-step
+
+1. **Push your code to GitHub** (or GitLab).
+
+2. Go to <https://dashboard.render.com> → click **New +** → **Static Site**.
+
+3. **Connect your repository** — authorize Render to access GitHub if prompted, then select this repo.
+
+4. **Configure the build**:
+
+   | Field               | Value                          |
+   | ------------------- | ------------------------------ |
+   | Name                | `fundo-cdn` (or anything)      |
+   | Branch              | `main`                         |
+   | Build Command       | `npm install && npm run build` |
+   | Publish Directory   | `dist`                         |
+
+   > If you use Bun locally, Render's build environment has Node/npm by default. Use `npm install && npm run build` unless you add a `render.yaml` that installs Bun.
+
+5. **Add environment variables** — scroll to **Environment Variables** on the same page and add:
+
+   | Key                              | Value                       |
+   | -------------------------------- | --------------------------- |
+   | `VITE_SUPABASE_URL`              | `https://xxx.supabase.co`   |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY`  | your publishable (anon) key |
+   | `VITE_SUPABASE_PROJECT_ID`       | your project ref            |
+
+6. **Fix SPA routing (prevents 404 on refresh)** — after the site is created, go to:
+   **Dashboard → your site → Redirects/Rewrites → Add Rule**
+
+   | Field       | Value          |
+   | ----------- | -------------- |
+   | Source      | `/*`           |
+   | Destination | `/index.html`  |
+   | Type        | **Rewrite**    |
+
+   Click **Save Changes**. Without this rule, navigating directly to `/app/files` or refreshing any non-root URL returns a 404.
+
+7. Click **Create Static Site** — Render builds and deploys automatically. You'll get a live URL like `https://fundo-cdn.onrender.com`.
+
+8. **(Optional) Custom domain** — Settings → Custom Domains → add your domain and point a CNAME at `fundo-cdn.onrender.com`.
+
+9. **Update R2 CORS** — add your new Render URL (and custom domain) to the R2 bucket CORS policy.
+
+10. **Deploy Supabase edge functions** the same way as above:
+    ```bash
+    npx supabase functions deploy r2-presign-put r2-confirm r2-sign-get r2-delete key-mint api-upload api-files
+    ```
+
+#### Optional: `render.yaml` (Infrastructure as Code)
+
+Add this file to the repo root to version-control your Render config:
+
+```yaml
+services:
+  - type: web
+    name: fundo-cdn
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_PROJECT_ID
+        sync: false
+```
+
+With `render.yaml` present, the rewrite rule and build settings are applied automatically — no manual dashboard config needed.
 
 ### Option C — Cloudflare Pages / Netlify / S3
 
