@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { formatBytes } from "@/lib/format";
 import { Files as FilesIcon, HardDrive, KeyRound, Activity } from "lucide-react";
@@ -7,22 +7,19 @@ import { Files as FilesIcon, HardDrive, KeyRound, Activity } from "lucide-react"
 export default function Overview() {
   const [stats, setStats] = useState({ files: 0, storage: 0, keys: 0, requests: 0, quota: 0 });
 
-  useEffect(() => { (async () => {
-    const [{ count: fc }, { data: filesAgg }, { count: kc }, { count: rc }, { data: q }] = await Promise.all([
-      supabase.from("files").select("*", { count: "exact", head: true }),
-      supabase.from("files").select("size_bytes"),
-      supabase.from("api_keys").select("*", { count: "exact", head: true }).is("revoked_at", null),
-      supabase.from("usage_logs").select("*", { count: "exact", head: true })
-        .gte("created_at", new Date(Date.now() - 30*24*3600*1000).toISOString()),
-      supabase.from("quotas").select("storage_limit_bytes").maybeSingle(),
-    ]);
-    const storage = (filesAgg ?? []).reduce((s, f: any) => s + Number(f.size_bytes || 0), 0);
-    setStats({ files: fc ?? 0, storage, keys: kc ?? 0, requests: rc ?? 0, quota: q?.storage_limit_bytes ?? 0 });
-  })(); }, []);
+  useEffect(() => {
+    api.get("/analytics/overview")
+      .then((d) => setStats(d))
+      .catch(() => {});
+  }, []);
 
   const cards = [
     { label: "Files", value: stats.files.toLocaleString(), icon: FilesIcon },
-    { label: "Storage used", value: formatBytes(stats.storage), icon: HardDrive, sub: stats.quota ? `of ${formatBytes(stats.quota)}` : undefined, pct: stats.quota ? Math.min(100, (stats.storage / stats.quota) * 100) : 0 },
+    {
+      label: "Storage used", value: formatBytes(stats.storage), icon: HardDrive,
+      sub: stats.quota ? `of ${formatBytes(stats.quota)}` : undefined,
+      pct: stats.quota ? Math.min(100, (stats.storage / stats.quota) * 100) : 0,
+    },
     { label: "Active API keys", value: stats.keys, icon: KeyRound },
     { label: "Requests (30d)", value: stats.requests.toLocaleString(), icon: Activity },
   ];

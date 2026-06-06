@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, CartesianGrid } from "recharts";
 import { formatBytes } from "@/lib/format";
@@ -8,21 +8,11 @@ export default function Analytics() {
   const [byDay, setByDay] = useState<{ day: string; requests: number; bytes: number }[]>([]);
   const [byAction, setByAction] = useState<{ action: string; count: number }[]>([]);
 
-  useEffect(() => { (async () => {
-    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-    const { data } = await supabase.from("usage_logs").select("created_at, bytes, action").gte("created_at", since);
-    const dayMap = new Map<string, { requests: number; bytes: number }>();
-    const actMap = new Map<string, number>();
-    (data ?? []).forEach((r: any) => {
-      const d = new Date(r.created_at).toISOString().slice(0, 10);
-      const cur = dayMap.get(d) ?? { requests: 0, bytes: 0 };
-      cur.requests++; cur.bytes += Number(r.bytes || 0);
-      dayMap.set(d, cur);
-      actMap.set(r.action, (actMap.get(r.action) ?? 0) + 1);
-    });
-    setByDay(Array.from(dayMap.entries()).sort(([a],[b]) => a.localeCompare(b)).map(([day, v]) => ({ day: day.slice(5), ...v })));
-    setByAction(Array.from(actMap.entries()).map(([action, count]) => ({ action, count })));
-  })(); }, []);
+  useEffect(() => {
+    api.get("/analytics")
+      .then((d) => { setByDay(d.byDay); setByAction(d.byAction); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -40,7 +30,7 @@ export default function Analytics() {
               <XAxis dataKey="day" stroke="oklch(0.72 0.04 260)" fontSize={11} />
               <YAxis stroke="oklch(0.72 0.04 260)" fontSize={11} />
               <Tooltip contentStyle={{ background: "oklch(0.20 0.04 265)", border: "1px solid oklch(1 0 0 / 0.1)", borderRadius: 8 }} />
-              <Line type="monotone" dataKey="requests" stroke="oklch(0.78 0.18 220)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="requests" stroke="oklch(0.72 0.22 215)" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -56,7 +46,7 @@ export default function Analytics() {
                 <XAxis dataKey="day" stroke="oklch(0.72 0.04 260)" fontSize={11} />
                 <YAxis stroke="oklch(0.72 0.04 260)" fontSize={11} tickFormatter={(v) => formatBytes(v, 0)} />
                 <Tooltip formatter={(v: any) => formatBytes(v)} contentStyle={{ background: "oklch(0.20 0.04 265)", border: "1px solid oklch(1 0 0 / 0.1)", borderRadius: 8 }} />
-                <Bar dataKey="bytes" fill="oklch(0.65 0.22 295)" radius={[6,6,0,0]} />
+                <Bar dataKey="bytes" fill="oklch(0.62 0.26 290)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

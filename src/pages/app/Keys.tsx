@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,23 +15,23 @@ export default function Keys() {
   const [shown, setShown] = useState<string | null>(null);
 
   async function load() {
-    const { data } = await supabase.from("api_keys").select("*").order("created_at", { ascending: false });
-    setKeys((data ?? []) as K[]);
+    api.get("/keys").then(setKeys).catch(() => {});
   }
   useEffect(() => { load(); }, []);
 
   async function create() {
     if (!name.trim()) return toast.error("Name required");
-    const { data, error } = await supabase.functions.invoke("key-mint", { body: { name } });
-    if (error || !data?.key) return toast.error(error?.message || "Failed");
-    setShown(data.key);
-    setName("");
-    load();
+    try {
+      const data = await api.post("/keys", { name });
+      setShown(data.key);
+      setName("");
+      load();
+    } catch (e: any) { toast.error(e.message); }
   }
 
   async function revoke(id: string) {
     if (!confirm("Revoke this key?")) return;
-    await supabase.from("api_keys").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+    await api.delete(`/keys/${id}`).catch((e) => toast.error(e.message));
     load();
   }
 
@@ -44,7 +44,8 @@ export default function Keys() {
 
       <Card className="glass p-6 border-border/50">
         <div className="flex gap-2">
-          <Input placeholder="Key name (e.g. production)" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input placeholder="Key name (e.g. production)" value={name} onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && create()} />
           <Button onClick={create} className="bg-primary text-primary-foreground"><Plus className="size-4 mr-1" /> Generate</Button>
         </div>
         {shown && (
@@ -66,7 +67,7 @@ export default function Keys() {
           <thead className="text-xs text-muted-foreground border-b border-border/50">
             <tr>
               <th className="px-4 py-3 text-left">Name</th>
-              <th className="px-4 py-3 text-left">Key</th>
+              <th className="px-4 py-3 text-left">Key prefix</th>
               <th className="px-4 py-3 text-left">Last used</th>
               <th className="px-4 py-3 text-left">Created</th>
               <th className="px-4 py-3 text-left">Status</th>
@@ -76,7 +77,7 @@ export default function Keys() {
           <tbody>
             {keys.map((k) => (
               <tr key={k.id} className="border-b border-border/30">
-                <td className="px-4 py-3 flex items-center gap-2"><KeyRound className="size-4 text-primary" /> {k.name}</td>
+                <td className="px-4 py-3 flex items-center gap-2"><KeyRound className="size-4 text-primary" />{k.name}</td>
                 <td className="px-4 py-3 font-mono text-xs">{k.key_prefix}…</td>
                 <td className="px-4 py-3 text-muted-foreground">{k.last_used_at ? formatDate(k.last_used_at) : "—"}</td>
                 <td className="px-4 py-3 text-muted-foreground">{formatDate(k.created_at)}</td>
@@ -90,9 +91,7 @@ export default function Keys() {
                 </td>
               </tr>
             ))}
-            {keys.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">No keys yet.</td></tr>
-            )}
+            {keys.length === 0 && <tr><td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">No keys yet.</td></tr>}
           </tbody>
         </table>
       </Card>

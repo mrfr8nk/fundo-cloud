@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
+import { token } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatBytes, formatDate, classifyMime } from "@/lib/format";
-import {
-  Upload, Trash2, Link2, Search, Star, Image as ImageIcon, FileText, Film, Archive, File as FileIcon, Loader2, Pencil, FolderInput,
-} from "lucide-react";
+import { Upload, Trash2, Link2, Search, Star, Image as ImageIcon, FileText, Film, Archive, File as FileIcon, Loader2, Pencil, FolderInput } from "lucide-react";
 
 const MAX = 100 * 1024 * 1024;
 type Row = {
@@ -43,41 +40,38 @@ export default function FilesPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
-    const { data } = await supabase.from("files").select("*").order("created_at", { ascending: false }).limit(500);
-    setRows((data ?? []) as Row[]);
+    api.get("/files").then(setRows).catch(() => {});
   }
   useEffect(() => { refresh(); }, []);
 
   const onFiles = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files);
     for (const f of arr) {
-      if (f.size > MAX) { toast.error(`${f.name} exceeds 100MB`); continue; }
-      const tempId = `${f.name}-${f.size}-${Date.now()}`;
+      if (f.size > MAX) { toast.error(`${f.name} exceeds 100 MB`); continue; }
+      const tempId = `${f.name}-${Date.now()}`;
       setProgress((p) => ({ ...p, [tempId]: 1 }));
       try {
-        const { data: pres, error } = await supabase.functions.invoke("r2-presign-put", {
-          body: { filename: f.name, mime: f.type || "application/octet-stream", size: f.size },
-        });
-        if (error || !pres?.url) throw new Error(error?.message || "presign failed");
+        const pres = await api.post("/files/presign", { filename: f.name, mime: f.type || "application/octet-stream", size: f.size });
 
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           xhr.open("PUT", pres.url);
           xhr.setRequestHeader("Content-Type", f.type || "application/octet-stream");
           xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) setProgress((p) => ({ ...p, [tempId]: Math.round((e.loaded / e.total) * 100) }));
+            if (e.lengthComputable) setProgress((p) => ({ ...p, [tempId]: Math.round((e.loaded / e.total) * 90) }));
           };
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`upload ${xhr.status}`)));
+          xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`upload ${xhr.status}`));
           xhr.onerror = () => reject(new Error("upload failed"));
           xhr.send(f);
         });
 
-        await supabase.functions.invoke("r2-confirm", { body: { fileId: pres.fileId } });
+        await api.post("/files/confirm", { fileId: pres.fileId });
+        setProgress((p) => ({ ...p, [tempId]: 100 }));
         toast.success(`Uploaded ${f.name}`);
       } catch (e: any) {
         toast.error(`${f.name}: ${e.message}`);
       } finally {
-        setProgress((p) => { const { [tempId]: _, ...rest } = p; return rest; });
+        setTimeout(() => setProgress((p) => { const { [tempId]: _, ...rest } = p; return rest; }), 800);
       }
     }
     refresh();
@@ -88,38 +82,32 @@ export default function FilesPage() {
   async function del(ids: string[]) {
     if (!confirm(`Delete ${ids.length} file(s)?`)) return;
     for (const id of ids) {
-      const { error } = await supabase.functions.invoke("r2-delete", { body: { fileId: id } });
-      if (error) toast.error(error.message);
+      await api.delete(`/files/${id}`).catch((e) => toast.error(e.message));
     }
     setSelected(new Set());
     refresh();
   }
 
   async function toggleFav(id: string, value: boolean) {
-    await supabase.from("files").update({ favorite: !value }).eq("id", id);
+    await api.patch(`/files/${id}`, { favorite: !value });
     refresh();
   }
 
   function linkFor(row: Row) {
-    // Public files: link directly to the R2 custom domain (no worker needed)
-    if (row.visibility === "public") {
-      return `https://cdn.synapex.co.zw/${row.r2_key}`;
-    }
-    // Private files: use the short-link redirect (requires the /s/* Worker route)
-    if (row.short_slug) return `https://cdn.synapex.co.zw/s/${row.short_slug}`;
+    if (row.visibility === "public") return `${import.meta.env.VITE_CDN_BASE_URL || "https://cdn.synapex.co.zw"}/${row.r2_key}`;
+    if (row.short_slug) return `${import.meta.env.VITE_CDN_BASE_URL || "https://cdn.synapex.co.zw"}/s/${row.short_slug}`;
     return null;
   }
 
   async function shareLink(row: Row) {
     const link = linkFor(row);
-    if (!link) { toast.error("No link available yet"); return; }
+    if (!link) { toast.error("No link available"); return; }
     await navigator.clipboard.writeText(link);
-    toast.success(row.visibility === "public" ? "Public link copied" : "Short link copied (signed on open)");
+    toast.success("Link copied!");
   }
 
   async function toggleVisibility(row: Row) {
-    const next = row.visibility === "public" ? "private" : "public";
-    await supabase.from("files").update({ visibility: next }).eq("id", row.id);
+    await api.patch(`/files/${row.id}`, { visibility: row.visibility === "public" ? "private" : "public" });
     refresh();
   }
 
@@ -138,15 +126,13 @@ export default function FilesPage() {
     let folder = editFolder.trim() || "/";
     if (!folder.startsWith("/")) folder = "/" + folder;
     folder = folder.replace(/\/+/g, "/").replace(/\/$/, "") || "/";
-    const newName = cleanName + ext;
-    const { error } = await supabase.from("files").update({ name: newName, folder }).eq("id", editing.id);
-    if (error) { toast.error(error.message); return; }
+    await api.patch(`/files/${editing.id}`, { name: cleanName + ext, folder });
     toast.success("Updated");
     setEditing(null);
     refresh();
   }
 
-  const filtered = rows.filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()) || r.tags.some((t) => t.includes(q.toLowerCase())) || (r.folder || "").includes(q));
+  const filtered = rows.filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()) || (r.folder || "").includes(q));
 
   return (
     <div className="space-y-6">
@@ -163,7 +149,7 @@ export default function FilesPage() {
           )}
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search files, folders…" className="pl-8 w-64" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search files…" className="pl-8 w-64" />
           </div>
         </div>
       </div>
@@ -178,7 +164,7 @@ export default function FilesPage() {
         <input ref={inputRef} type="file" multiple hidden onChange={(e) => e.target.files && onFiles(e.target.files)} />
         <Upload className="size-8 mx-auto text-primary" />
         <div className="mt-3 font-medium">Drop files here or click to browse</div>
-        <div className="text-sm text-muted-foreground mt-1">Up to 100 MB each · images, video, PDF, archives</div>
+        <div className="text-sm text-muted-foreground mt-1">Up to 100 MB · images, video, PDF, archives</div>
       </Card>
 
       {Object.entries(progress).map(([k, v]) => (
@@ -197,7 +183,7 @@ export default function FilesPage() {
           <table className="w-full text-sm">
             <thead className="text-xs text-muted-foreground border-b border-border/50">
               <tr>
-                <th className="px-4 py-3 text-left w-8"></th>
+                <th className="px-4 py-3 w-8"></th>
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Folder</th>
                 <th className="px-4 py-3 text-left">Size</th>
@@ -228,14 +214,15 @@ export default function FilesPage() {
                     <td className="px-4 py-3 text-muted-foreground text-xs">{r.folder || "/"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{formatBytes(r.size_bytes)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => toggleVisibility(r)} className={`text-xs px-2 py-0.5 rounded ${r.visibility === "public" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      <button onClick={() => toggleVisibility(r)}
+                        className={`text-xs px-2 py-0.5 rounded ${r.visibility === "public" ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
                         {r.visibility}
                       </button>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(r.created_at)}</td>
                     <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => shareLink(r)} title="Copy short link"><Link2 className="size-4" /></Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)} title="Rename / move"><Pencil className="size-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => shareLink(r)}><Link2 className="size-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Pencil className="size-4" /></Button>
                       <Button variant="ghost" size="sm" onClick={() => del([r.id])}><Trash2 className="size-4" /></Button>
                     </td>
                   </tr>
@@ -251,9 +238,7 @@ export default function FilesPage() {
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="glass">
-          <DialogHeader>
-            <DialogTitle>Rename & move</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Rename &amp; move</DialogTitle></DialogHeader>
           {editing && (
             <div className="space-y-4">
               <div>
@@ -267,9 +252,8 @@ export default function FilesPage() {
                 <Label className="text-xs text-muted-foreground">Folder</Label>
                 <div className="flex items-center gap-2 mt-1.5">
                   <FolderInput className="size-4 text-muted-foreground" />
-                  <Input value={editFolder} onChange={(e) => setEditFolder(e.target.value)} placeholder="/images/marketing" />
+                  <Input value={editFolder} onChange={(e) => setEditFolder(e.target.value)} placeholder="/images" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Use slashes to nest, e.g. <code>/clients/acme</code></p>
               </div>
             </div>
           )}
