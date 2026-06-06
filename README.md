@@ -8,110 +8,133 @@ Built by **Developer Darrell Mucheri**.
 
 ## ✨ Features
 
-- **Direct-to-R2 uploads** via presigned URLs (no server bandwidth)
-- **Public + private** files with time-boxed signed share links
+- **Direct-to-R2 uploads** via presigned URLs (no server bandwidth used)
+- **Public + private** files with short-link sharing
 - **Developer REST API** with hashed Bearer keys (`fundo_live_*`)
 - **Per-user quotas** (storage / bandwidth) with usage logs
 - **Admin panel** for user & file moderation
-- **Analytics dashboard** (storage, bandwidth, requests) with Recharts
-- **Auth** via email/password + Google OAuth
+- **Analytics dashboard** (requests, bandwidth, actions) with Recharts
+- **Email/password auth** with JWT sessions (7-day tokens)
+- **First user becomes admin** automatically
 - **Futuristic neon glassmorphism** design system
+
+---
 
 ## 🧱 Tech Stack
 
-| Layer          | Tech                                                       |
-| -------------- | ---------------------------------------------------------- |
-| Frontend       | **React 19 + Vite 7** (SPA), **react-router-dom v7**      |
-| UI             | TailwindCSS v4, shadcn/ui, Lucide, Recharts, Sonner       |
-| Backend        | Supabase (Postgres + Auth + Edge Functions / Deno)         |
-| Storage / CDN  | Cloudflare R2 (S3-compatible) + custom domain              |
-| Build runtime  | Bun (or Node 20+)                                          |
-| Validation     | Zod                                                        |
+| Layer         | Tech                                                      |
+| ------------- | --------------------------------------------------------- |
+| Frontend      | **React 19 + Vite 7** (SPA), react-router-dom v7          |
+| UI            | TailwindCSS v4, shadcn/ui, Lucide, Recharts, Sonner       |
+| Backend       | **Express.js** (Node 20), **Mongoose**, JWT auth          |
+| Database      | **MongoDB Atlas**                                         |
+| Storage / CDN | Cloudflare R2 (S3-compatible) + custom domain             |
+| Validation    | Zod (frontend), native Express (backend)                  |
 
-> This project is a **plain React + Vite SPA** — no SSR, no TanStack Start, no Cloudflare Workers. It deploys as static files to any host (Vercel, Render, Netlify, Cloudflare Pages, S3, etc.).
+> The frontend is a plain React + Vite SPA. The Express API runs alongside it in development (Vite proxies `/api` to port 3001). In production, host the API separately and set `VITE_API_BASE_URL` accordingly.
+
+---
 
 ## 📂 Project Structure
 
 ```
-index.html              Vite entry HTML
+index.html                  Vite entry
 src/
-  main.tsx              React + BrowserRouter bootstrap
-  App.tsx               Route table (react-router-dom)
-  styles.css            Tailwind v4 + design tokens
+  main.tsx                  React + BrowserRouter bootstrap
+  App.tsx                   Route table
+  styles.css                Tailwind v4 + design tokens
+  lib/
+    api.ts                  Fetch wrapper (JWT, base path)
+    format.ts               formatBytes, formatDate, classifyMime
+  hooks/
+    useAuth.ts              JWT session hook (/api/auth/me)
   pages/
-    Landing.tsx         Public landing page (/)
-    Auth.tsx            Sign in / Sign up (/auth)
+    Landing.tsx             Public landing page (/)
+    Auth.tsx                Sign in / Sign up (/auth)
     app/
-      AppLayout.tsx     Authenticated dashboard shell (/app)
-      Overview.tsx      /app
-      Files.tsx         /app/files
-      Keys.tsx          /app/keys
-      Docs.tsx          /app/docs
-      Analytics.tsx     /app/analytics
-      Admin.tsx         /app/admin
-  integrations/supabase/ Auto-generated Supabase client + types
-  hooks/useAuth.ts       Session + roles hook
-  lib/                   Utilities (format, etc.)
-supabase/
-  migrations/            SQL migrations (tables, RLS, functions)
-  functions/             Deno edge functions
-    r2-presign-put/      Issue presigned PUT URL
-    r2-confirm/          Verify object & write metadata
-    r2-sign-get/         Issue presigned GET URL
-    r2-delete/           Delete object + row
-    key-mint/            Generate API key
-    api-upload/          Public REST: upload (multipart)
-    api-files/           Public REST: list / delete
+      AppLayout.tsx         Authenticated dashboard shell
+      Overview.tsx          /app  — stats overview
+      Files.tsx             /app/files
+      Keys.tsx              /app/keys
+      Analytics.tsx         /app/analytics
+      Admin.tsx             /app/admin  (admin only)
+      Docs.tsx              /app/docs   — API reference
+server/
+  index.js                  Express app entry (port 3001)
+  db.js                     Mongoose connection
+  middleware/
+    auth.js                 JWT verify + requireAdmin
+  models/
+    User.js                 email, passwordHash, role, quota
+    File.js                 r2Key, sizeBytes, visibility, tags…
+    ApiKey.js               keyPrefix, keyHash, revokedAt…
+    UsageLog.js             action, bytes, fileId
+  routes/
+    auth.js                 POST /signup  /signin  GET /me
+    files.js                GET / POST /presign /confirm PATCH DELETE
+    keys.js                 GET POST DELETE
+    analytics.js            GET /  GET /overview
+    admin.js                GET /users  GET /files  DELETE /files/:id
 ```
+
+---
 
 ## 🚀 Local Setup
 
 ### 1. Prerequisites
 
-- Node 20+ or Bun 1.1+
-- A Supabase project (auto-provisioned in Lovable Cloud)
-- A Cloudflare R2 bucket + API token
+- Node 20+
+- MongoDB Atlas cluster (free tier works)
+- Cloudflare R2 bucket + API token (optional — app runs without it, uploads return a 503)
 
 ### 2. Install
 
 ```bash
-bun install
-# or: npm install
+npm install
 ```
 
-### 3. Environment
+### 3. Environment Variables
 
-`.env` (auto-managed — do not edit manually):
+Create a `.env` file or set these in your host's secrets panel:
 
-```env
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_PUBLISHABLE_KEY=...
-VITE_SUPABASE_PROJECT_ID=...
+| Variable              | Required | Description                                         |
+| --------------------- | -------- | --------------------------------------------------- |
+| `MONGODB_URI`         | ✅       | MongoDB Atlas connection string                     |
+| `JWT_SECRET`          | ✅       | Random 32+ char secret for signing JWTs             |
+| `API_PORT`            |          | Express port (default `3001`)                       |
+| `R2_ACCOUNT_ID`       |          | Cloudflare account ID                               |
+| `R2_ACCESS_KEY_ID`    |          | R2 API token access key                             |
+| `R2_SECRET_ACCESS_KEY`|          | R2 API token secret key                             |
+| `R2_BUCKET`           |          | R2 bucket name                                      |
+| `VITE_CDN_BASE_URL`   |          | Public CDN base URL (e.g. `https://cdn.example.com`)|
+
+### 4. Run (development)
+
+```bash
+npm run dev:all
 ```
 
-### 4. Backend Secrets
+This starts both Vite (port 5000) and the Express API (port 3001) via `concurrently`. Vite proxies all `/api` requests to the backend automatically.
 
-Set these in Supabase → Edge Functions → Secrets:
+- App: <http://localhost:5000>
+- API: <http://localhost:3001/api/health>
 
-| Secret                      | Purpose                                            |
-| --------------------------- | -------------------------------------------------- |
-| `R2_ACCOUNT_ID`             | Cloudflare account ID                              |
-| `R2_ACCESS_KEY_ID`          | R2 access key                                      |
-| `R2_SECRET_ACCESS_KEY`      | R2 secret key                                      |
-| `R2_BUCKET`                 | R2 bucket name                                     |
-| `R2_PUBLIC_BASE_URL`        | e.g. `https://cdn.synapex.co.zw`                   |
+### 5. First user
 
-### 5. R2 Bucket CORS
+The very first account created via Sign Up is automatically assigned the `admin` role.
 
-Cloudflare → R2 → bucket → Settings → CORS Policy:
+---
+
+## 🌐 Cloudflare R2 Setup
+
+1. Create an R2 bucket in the Cloudflare dashboard.
+2. Create an **API token** with Object Read + Write permissions and note the access/secret keys.
+3. Set the five `R2_*` environment variables (see table above).
+4. Configure **CORS** on the bucket:
 
 ```json
 [{
-  "AllowedOrigins": [
-    "https://cdn.synapex.co.zw",
-    "https://your-app.vercel.app",
-    "http://localhost:8080"
-  ],
+  "AllowedOrigins": ["https://your-app.com", "http://localhost:5000"],
   "AllowedMethods": ["PUT", "GET", "HEAD"],
   "AllowedHeaders": ["*"],
   "ExposeHeaders": ["ETag"],
@@ -119,206 +142,113 @@ Cloudflare → R2 → bucket → Settings → CORS Policy:
 }]
 ```
 
-### 6. Run
+5. Optionally connect a **Custom Domain** (R2 → bucket → Settings → Custom Domains) and set `VITE_CDN_BASE_URL` to it.
 
-```bash
-bun dev
-```
-
-App: <http://localhost:8080>
-
-## 🌐 Custom Domain (Cloudflare R2)
-
-1. Cloudflare → R2 → bucket → **Settings → Custom Domains → Connect Domain**
-2. Enter `cdn.synapex.co.zw`
-3. Cloudflare creates the DNS record + SSL automatically (1–2 min)
-4. Set `R2_PUBLIC_BASE_URL` secret to `https://cdn.synapex.co.zw`
+---
 
 ## 📖 REST API
 
-Base URL: `https://<project-id>.functions.supabase.co`
+All endpoints are prefixed `/api`. Authenticated routes require `Authorization: Bearer <jwt>`.
 
-All requests require `Authorization: Bearer fundo_live_xxx`.
+### Auth
 
 ```bash
-# Upload
-curl -X POST $BASE/api-upload \
-  -H "Authorization: Bearer fundo_live_xxx" \
-  -F "file=@./logo.png" -F "visibility=public"
-
-# List
-curl $BASE/api-files -H "Authorization: Bearer fundo_live_xxx"
-
-# Delete
-curl -X POST $BASE/api-files \
-  -H "Authorization: Bearer fundo_live_xxx" \
-  -H "Content-Type: application/json" \
-  -d '{"action":"delete","fileId":"<uuid>"}'
+POST /api/auth/signup   { email, password }  → { token, user }
+POST /api/auth/signin   { email, password }  → { token, user }
+GET  /api/auth/me                            → { id, email, role }
 ```
+
+### Files
+
+```bash
+GET    /api/files                            → file[]
+POST   /api/files/presign  { filename, mime, size }  → { url, fileId }
+POST   /api/files/confirm  { fileId }        → { ok }
+PATCH  /api/files/:id      { name?, folder?, visibility?, favorite? }
+DELETE /api/files/:id
+```
+
+### API Keys
+
+```bash
+GET    /api/keys
+POST   /api/keys           { name }          → { key (shown once), id, … }
+DELETE /api/keys/:id                         # revokes the key
+```
+
+### Analytics
+
+```bash
+GET /api/analytics           → { byDay[], byAction[] }
+GET /api/analytics/overview  → { files, storage, keys, requests, quota }
+```
+
+### Admin (admin role required)
+
+```bash
+GET    /api/admin/users
+GET    /api/admin/files
+DELETE /api/admin/files/:id
+```
+
+---
 
 ## 🔐 Security
 
-- **RLS** on every table; users only see their own rows (admins bypass via `has_role()`)
+- Passwords hashed with **bcrypt** (12 rounds)
+- JWT tokens signed with `JWT_SECRET`, expire in 7 days
 - API keys stored as **SHA-256 hashes** — raw key shown once at creation
-- Direct-to-R2 uploads via short-lived (15 min) presigned URLs
-- File extension allowlist (`.exe`, `.bat`, `.sh`, … blocked)
-- 100 MB per-file limit, per-user storage + bandwidth quotas
+- R2 presigned PUT URLs expire in 15 minutes
+- `requireAdmin` middleware blocks non-admin access to `/api/admin`
+
+---
 
 ## 🧪 Scripts
 
 ```bash
-bun dev          # Vite dev server (port 8080)
-bun run build    # Production build → dist/
-bun run preview  # Preview prod build locally
+npm run dev         # Vite only (frontend)
+npm run server      # Express API only
+npm run dev:all     # Both together (recommended for local dev)
+npm run build       # Production build → dist/
+npm run preview     # Preview prod build locally
 ```
 
 ---
 
 ## 🚢 Deployment
 
-This is a **static SPA** — `bun run build` produces a `dist/` folder with `index.html` + assets. Deploy that folder anywhere.
+The frontend builds to a static `dist/` folder. The Express backend must be hosted as a Node.js service.
 
-> All three host options below require **SPA fallback** (every URL → `index.html`) so client-side routes like `/app/files` work on direct loads / refreshes.
+### Option A — Render
 
-### Option A — Deploy on Vercel
+1. **Backend**: New → Web Service → Node → build `npm install`, start `node server/index.js`. Add all env vars.
+2. **Frontend**: New → Static Site → build `npm run build`, publish `dist/`. Add SPA rewrite `/* → /index.html`.
+3. Point `VITE_API_BASE_URL` (build-time) at your backend URL, or proxy via the static host.
 
-1. **Push to GitHub** and import the repo at <https://vercel.com/new>.
-2. **Framework preset**: `Vite` (auto-detected).
-3. **Build settings** (defaults are correct):
-   - Install Command: `bun install` (or leave blank)
-   - Build Command: `bun run build`
-   - Output Directory: `dist`
-4. **Environment Variables** (Project → Settings → Environment Variables):
+### Option B — Railway / Fly.io / any Node host
 
-   | Key                              | Value                       |
-   | -------------------------------- | --------------------------- |
-   | `VITE_SUPABASE_URL`              | `https://xxx.supabase.co`   |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY`  | your publishable (anon) key |
-   | `VITE_SUPABASE_PROJECT_ID`       | your project ref            |
-
-5. **SPA rewrite** — A `vercel.json` is already included in this repo. It rewrites every URL to `index.html` so client-side routes like `/app/files` work on direct load and browser refresh without 404s.
-
-   ```json
-   {
-     "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-   }
-   ```
-
-   > No manual step needed — just make sure you don't delete `vercel.json` from the root.
-
-6. **Deploy**. Add a custom domain in Project → Settings → Domains.
-7. **Update R2 CORS** with the new Vercel URL + custom domain.
-
-> ⚠️ Edge functions (`supabase/functions/*`) deploy via Supabase, not Vercel:
-> ```bash
-> npx supabase functions deploy r2-presign-put r2-confirm r2-sign-get r2-delete key-mint api-upload api-files
-> ```
-
-### Option B — Deploy on Render
-
-Render hosts static sites for free with automatic HTTPS and global CDN.
-
-#### Step-by-step
-
-1. **Push your code to GitHub** (or GitLab).
-
-2. Go to <https://dashboard.render.com> → click **New +** → **Static Site**.
-
-3. **Connect your repository** — authorize Render to access GitHub if prompted, then select this repo.
-
-4. **Configure the build**:
-
-   | Field               | Value                       |
-   | ------------------- | --------------------------- |
-   | Name                | `fundo-cdn` (or anything)   |
-   | Branch              | `main`                      |
-   | Build Command       | `bun install && bun run build` |
-   | Publish Directory   | `dist`                         |
-
-   > Render ships with Bun pre-installed — use it. Bun avoids the `"Exit handler never called!"` npm bug entirely and is faster. Do **not** use `npm install` or `npm ci` on Render.
-
-5. **Add environment variables** — scroll to **Environment Variables** on the same page and add:
-
-   | Key                              | Value                       |
-   | -------------------------------- | --------------------------- |
-   | `VITE_SUPABASE_URL`              | `https://xxx.supabase.co`   |
-   | `VITE_SUPABASE_PUBLISHABLE_KEY`  | your publishable (anon) key |
-   | `VITE_SUPABASE_PROJECT_ID`       | your project ref            |
-
-6. **Fix SPA routing (prevents 404 on refresh)** — after the site is created, go to:
-   **Dashboard → your site → Redirects/Rewrites → Add Rule**
-
-   | Field       | Value          |
-   | ----------- | -------------- |
-   | Source      | `/*`           |
-   | Destination | `/index.html`  |
-   | Type        | **Rewrite**    |
-
-   Click **Save Changes**. Without this rule, navigating directly to `/app/files` or refreshing any non-root URL returns a 404.
-
-7. Click **Create Static Site** — Render builds and deploys automatically. You'll get a live URL like `https://fundo-cdn.onrender.com`.
-
-8. **(Optional) Custom domain** — Settings → Custom Domains → add your domain and point a CNAME at `fundo-cdn.onrender.com`.
-
-9. **Update R2 CORS** — add your new Render URL (and custom domain) to the R2 bucket CORS policy.
-
-10. **Deploy Supabase edge functions** the same way as above:
-    ```bash
-    npx supabase functions deploy r2-presign-put r2-confirm r2-sign-get r2-delete key-mint api-upload api-files
-    ```
-
-#### Optional: `render.yaml` (Infrastructure as Code)
-
-Add this file to the repo root to version-control your Render config:
-
-```yaml
-services:
-  - type: web
-    name: fundo-cdn
-    runtime: static
-    buildCommand: bun install && bun run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_SUPABASE_URL
-        sync: false
-      - key: VITE_SUPABASE_PUBLISHABLE_KEY
-        sync: false
-      - key: VITE_SUPABASE_PROJECT_ID
-        sync: false
-```
-
-With `render.yaml` present, the rewrite rule and build settings are applied automatically — no manual dashboard config needed.
-
-### Option C — Cloudflare Pages / Netlify / S3
-
-`bun run build`, upload `dist/`, configure SPA fallback (`/* → /index.html`). Done.
+Deploy `server/` as a Node 20 app, set env vars, expose port 3001. Host `dist/` on Vercel/Netlify/Cloudflare Pages with SPA fallback.
 
 ### Post-deploy Checklist
 
-- [ ] `R2_PUBLIC_BASE_URL` secret set to your CDN domain
-- [ ] R2 bucket CORS includes all deployed origins
-- [ ] R2 bucket has Custom Domain connected
-- [ ] Supabase Auth → URL Configuration → add deployed URL to **Site URL** + **Redirect URLs**
-- [ ] Google OAuth redirect URI updated in Google Cloud Console
-- [ ] Edge functions deployed (`supabase functions deploy …`)
+- [ ] `MONGODB_URI` set on backend host
+- [ ] `JWT_SECRET` set on backend host (keep it private)
+- [ ] `R2_*` secrets set on backend host
+- [ ] `VITE_CDN_BASE_URL` set at frontend build time
+- [ ] R2 bucket CORS includes deployed frontend origin
 - [ ] Smoke test: sign up → upload → copy public link → load via CDN domain
 
 ---
 
 ## 🛠 Troubleshooting
 
-| Symptom                                              | Fix                                                                                       |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `permission denied for function has_role`            | `GRANT EXECUTE ON FUNCTION public.has_role TO authenticated, anon, service_role;`         |
-| Upload XHR fails with CORS error                     | Add deployed origin to R2 bucket CORS policy                                              |
-| Public URL returns 403                               | File `visibility` is `private` — use `/r2-sign-get` for a signed URL                      |
-| Refresh on `/app/files` returns 404                  | Host is not configured for SPA fallback — see Deployment section                          |
-| Auth redirect lands on `localhost`                   | Set Site URL + Redirect URLs in Supabase Auth settings                                    |
-| `vite: command not found` on Vercel                  | Install Command must be `bun install`, NOT `bun run build`                                |
+| Symptom                                    | Fix                                                                     |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `MONGODB_URI environment variable is not set` | Set the variable and restart the server                              |
+| Upload returns 503                         | Set all five `R2_*` env vars and restart                               |
+| `/api/*` returns 404 in dev                | Ensure `npm run dev:all` is running (not just `npm run dev`)            |
+| Refresh on `/app/files` returns 404        | Host not configured for SPA fallback — rewrite `/* → /index.html`      |
+| JWT errors after changing `JWT_SECRET`     | All existing tokens are invalidated — users must sign in again          |
 
 ---
 
