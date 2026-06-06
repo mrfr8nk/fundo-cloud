@@ -228,14 +228,15 @@ Render hosts static sites for free with automatic HTTPS and global CDN.
 
 4. **Configure the build**:
 
-   | Field               | Value                          |
-   | ------------------- | ------------------------------ |
-   | Name                | `fundo-cdn` (or anything)      |
-   | Branch              | `main`                         |
-   | Build Command       | `npm install && npm run build` |
-   | Publish Directory   | `dist`                         |
+   | Field               | Value                       |
+   | ------------------- | --------------------------- |
+   | Name                | `fundo-cdn` (or anything)   |
+   | Branch              | `main`                      |
+   | Build Command       | `npm ci && npm run build`   |
+   | Publish Directory   | `dist`                      |
 
-   > If you use Bun locally, Render's build environment has Node/npm by default. Use `npm install && npm run build` unless you add a `render.yaml` that installs Bun.
+   > Use `npm ci` (not `npm install`) — it reads `package-lock.json` directly and avoids the `"Exit handler never called!"` npm bug that appears on some Render Node versions.
+   > A `.node-version` file is included in this repo that pins Node 20, which Render automatically picks up.
 
 5. **Add environment variables** — scroll to **Environment Variables** on the same page and add:
 
@@ -276,7 +277,7 @@ services:
   - type: web
     name: fundo-cdn
     runtime: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite
